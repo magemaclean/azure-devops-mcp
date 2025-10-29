@@ -1,9 +1,1 @@
 runtime: typescript
-transport: streamable-http
-entry: src/index.ts
-args:
-  - jestaisinc
-  - --authentication
-  - pat
-env:
-  SMITHERY_MODE: "true"
