@@ -131,13 +131,32 @@ async function main() {
   configureAllTools(server, authenticator, getAzureDevOpsClient(orgUrl, authenticator, userAgentComposer), () => userAgentComposer.userAgent, enabledDomains, orgName);
   console.error(`[MCP] Tools configured for domains: ${Array.from(enabledDomains).join(', ')}`);
 
-  console.error("[MCP] Connecting transport...");
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("[MCP] Transport connected - server ready");
+  // Smithery's streamable-http transport expects the server WITHOUT transport connected
+  // For local/stdio usage, we connect StdioServerTransport
+  const connectTransport = process.env.NODE_ENV !== 'smithery' && !process.env.SMITHERY_MODE;
+  
+  if (connectTransport) {
+    console.error("[MCP] Connecting stdio transport for local usage...");
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error("[MCP] Transport connected - server ready");
+  } else {
+    console.error("[MCP] Server ready (transport will be connected by Smithery wrapper)");
+  }
+  
+  return server;
 }
 
-main().catch((error) => {
-  console.error("Fatal error in main():", error);
-  process.exit(1);
-});
+// Auto-run main() for local/stdio usage
+// Smithery will import and call main() itself  
+// In ES modules, check if this file is being run directly
+const isDirectRun = process.argv[1] && (process.argv[1].endsWith('/index.js') || process.argv[1].endsWith('\\index.js'));
+if (isDirectRun) {
+  main().catch((error) => {
+    console.error("Fatal error in main():", error);
+    process.exit(1);
+  });
+}
+
+// Export default for Smithery's streamable-http transport
+export default main;
