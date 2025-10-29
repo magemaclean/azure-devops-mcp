@@ -2,12 +2,11 @@
 // Licensed under the MIT License.
 
 /**
- * Smithery-specific entry point using Smithery SDK's createStatefulServer
- * This properly integrates with Smithery's HTTP transport
+ * Smithery-specific entry point using Smithery SDK's createStatelessServer
+ * Azure DevOps MCP is stateless - each request is independent
  */
 
-import { createStatefulServer } from "@smithery/sdk";
-import type { CreateServerArg } from "@smithery/sdk/server/stateful.js";
+import { createStatelessServer, type CreateStatelessServerArg } from "@smithery/sdk/server/stateless.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import * as azdev from "azure-devops-node-api";
 import { z } from "zod";
@@ -44,9 +43,9 @@ function getAzureDevOpsClient(
   };
 }
 
-// Server factory function - called for each new session
-function createMcpServer({ sessionId, config, logger }: CreateServerArg<Config>): Server {
-  logger.info(`Creating MCP server for session ${sessionId}`);
+// Server factory function - called for each request (stateless)
+function createMcpServer({ config, logger }: CreateStatelessServerArg<Config>): Server {
+  logger.info(`Creating MCP server instance`);
   logger.info(`Organization: ${config.organization}, Auth: ${config.authentication}`);
 
   const orgUrl = `https://dev.azure.com/${config.organization}`;
@@ -92,8 +91,8 @@ function createMcpServer({ sessionId, config, logger }: CreateServerArg<Config>)
   return server;
 }
 
-// Export the Express app from Smithery SDK's stateful server
-const { app } = createStatefulServer(createMcpServer, {
+// Export the Express app from Smithery SDK's stateless server
+const { app } = createStatelessServer(createMcpServer, {
   schema: ConfigSchema,
   logLevel: "info",
 });
