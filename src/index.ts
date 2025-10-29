@@ -128,7 +128,7 @@ async function main() {
   // configurePrompts(server);
 
   console.error("[MCP] Configuring tools...");
-  configureAllTools(server, authenticator, getAzureDevOpsClient(orgUrl, authenticator, userAgentComposer), () => userAgentComposer.userAgent, enabledDomains);
+  configureAllTools(server, authenticator, getAzureDevOpsClient(orgUrl, authenticator, userAgentComposer), () => userAgentComposer.userAgent, enabledDomains, orgName);
   console.error(`[MCP] Tools configured for domains: ${Array.from(enabledDomains).join(', ')}`);
 
   console.error("[MCP] Connecting transport...");
