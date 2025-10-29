@@ -91,7 +91,19 @@ async function main() {
   server.server.oninitialized = () => {
     userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
   };
-  const tenantId = (await getOrgTenant(orgName)) ?? argv.tenant;
+  
+  // For PAT authentication, we don't need tenant lookup (which can block startup)
+  // For other auth types, tenant lookup happens lazily on first tool use
+  let tenantId: string | undefined = argv.tenant;
+  if (argv.authentication !== "pat") {
+    try {
+      tenantId = (await getOrgTenant(orgName)) ?? argv.tenant;
+    } catch (error) {
+      // If tenant lookup fails, continue without it - tools will attempt auth without tenant
+      console.warn("Warning: Could not lookup organization tenant ID:", error);
+    }
+  }
+  
   const authenticator = createAuthenticator(argv.authentication, tenantId);
 
   // removing prompts untill further notice
