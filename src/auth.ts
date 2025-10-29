@@ -62,6 +62,18 @@ class OAuthAuthenticator {
 
 function createAuthenticator(type: string, tenantId?: string): () => Promise<string> {
   switch (type) {
+    case "pat":
+      // Use Personal Access Token from environment variable
+      return async () => {
+        const token = process.env.AZURE_DEVOPS_PAT || process.env.ADO_PAT;
+        if (!token) {
+          throw new Error(
+            "Personal Access Token not found. Please set AZURE_DEVOPS_PAT or ADO_PAT environment variable."
+          );
+        }
+        return token;
+      };
+
     case "azcli":
     case "env":
       if (type !== "env") {

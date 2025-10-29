@@ -2,3 +2,5 @@ runtime: typescript
 transport: streamable-http
 args:
   - jestaisinc
+  - --authentication
+  - pat
