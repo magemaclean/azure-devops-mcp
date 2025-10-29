@@ -38,42 +38,47 @@ function getAzureDevOpsClient(
   };
 }
 
-// Create the MCP server
-const server = new McpServer({
-  name: "Azure DevOps MCP Server",
-  version: packageVersion,
-  icons: [
-    {
-      src: "https://cdn.vsassets.io/content/icons/favicon.ico",
-    },
-  ],
-});
+// Export a function that creates the server (for Smithery's wrapper)
+export default function createServer() {
+  console.error("[Smithery] createServer() called");
+  
+  // Create the MCP server
+  const server = new McpServer({
+    name: "Azure DevOps MCP Server",
+    version: packageVersion,
+    icons: [
+      {
+        src: "https://cdn.vsassets.io/content/icons/favicon.ico",
+      },
+    ],
+  });
 
-const userAgentComposer = new UserAgentComposer(packageVersion);
-server.server.oninitialized = () => {
-  console.error("[Smithery] Server initialized by client");
-  userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
-};
+  const userAgentComposer = new UserAgentComposer(packageVersion);
+  server.server.oninitialized = () => {
+    console.error("[Smithery] Server initialized by client");
+    userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
+  };
 
-// Create authenticator (PAT - no tenant lookup)
-const authenticator = createAuthenticator(authType, undefined);
+  // Create authenticator (PAT - no tenant lookup)
+  const authenticator = createAuthenticator(authType, undefined);
 
-// Enable all domains
-const domainsManager = new DomainsManager(["all"]);
-const enabledDomains = domainsManager.getEnabledDomains();
+  // Enable all domains
+  const domainsManager = new DomainsManager(["all"]);
+  const enabledDomains = domainsManager.getEnabledDomains();
 
-// Configure tools
-configureAllTools(
-  server,
-  authenticator,
-  getAzureDevOpsClient(authenticator, userAgentComposer),
-  () => userAgentComposer.userAgent,
-  enabledDomains,
-  orgName
-);
+  // Configure tools
+  configureAllTools(
+    server,
+    authenticator,
+    getAzureDevOpsClient(authenticator, userAgentComposer),
+    () => userAgentComposer.userAgent,
+    enabledDomains,
+    orgName
+  );
 
-console.error(`[Smithery] Server configured with domains: ${Array.from(enabledDomains).join(", ")}`);
+  console.error(`[Smithery] Server configured with domains: ${Array.from(enabledDomains).join(", ")}`);
 
-// Export the underlying Server instance for Smithery's HTTP wrapper
-export default server.server;
+  // Return the underlying Server instance
+  return server.server;
+}
 
