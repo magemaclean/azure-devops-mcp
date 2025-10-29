@@ -19,7 +19,7 @@ import { DomainsManager } from "./shared/domains.js";
 // Configuration schema for Smithery session configuration
 export const configSchema = z.object({
   organization: z.string().describe("Azure DevOps organization name"),
-  authentication: z.enum(["pat", "interactive", "azcli", "env"]).default("pat").describe("Authentication method"),
+  pat: z.string().describe("Azure DevOps Personal Access Token (required for authentication)"),
   domains: z.array(z.string()).default(["all"]).describe("Domains to enable (default: all)"),
 });
 
@@ -45,7 +45,7 @@ function getAzureDevOpsClient(
 // Required by Smithery: Export default createServer function
 export default function createServer({ config }: { config: Config }) {
   console.error("[Smithery] Creating Azure DevOps MCP Server");
-  console.error(`[Smithery] Organization: ${config.organization}, Auth: ${config.authentication}`);
+  console.error(`[Smithery] Organization: ${config.organization}`);
 
   const orgUrl = `https://dev.azure.com/${config.organization}`;
 
@@ -66,8 +66,8 @@ export default function createServer({ config }: { config: Config }) {
     userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
   };
 
-  // Create authenticator (no tenant lookup for PAT)
-  const authenticator = createAuthenticator(config.authentication, undefined);
+  // Create authenticator using PAT from config
+  const authenticator = async () => config.pat;
 
   // Get enabled domains
   const domainsManager = new DomainsManager(config.domains);
