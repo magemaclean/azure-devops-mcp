@@ -8,6 +8,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import * as azdev from "azure-devops-node-api";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 
 import { createAuthenticator } from "./auth.js";
 import { getOrgTenant } from "./org-tenants.js";
