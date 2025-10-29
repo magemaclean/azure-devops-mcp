@@ -5,6 +5,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { createSmitheryServer } from "@smithery/sdk";
 import * as azdev from "azure-devops-node-api";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -77,30 +78,51 @@ function getAzureDevOpsClient(getAzureDevOpsToken: () => Promise<string>, userAg
 }
 
 async function main() {
-  const server = new McpServer({
-    name: "Azure DevOps MCP Server",
-    version: packageVersion,
-    icons: [
-      {
-        src: "https://cdn.vsassets.io/content/icons/favicon.ico",
-      },
-    ],
-  });
+  // Check if we're running in Smithery HTTP mode
+  const isSmitheryMode = process.env.SMITHERY_HTTP_TRANSPORT === "true";
 
-  const userAgentComposer = new UserAgentComposer(packageVersion);
-  server.server.oninitialized = () => {
-    userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
-  };
-  const tenantId = (await getOrgTenant(orgName)) ?? argv.tenant;
-  const authenticator = createAuthenticator(argv.authentication, tenantId);
+  if (isSmitheryMode) {
+    // Use Smithery's server creation for HTTP transport
+    await createSmitheryServer(async (server: McpServer) => {
+      const userAgentComposer = new UserAgentComposer(packageVersion);
+      server.server.oninitialized = () => {
+        userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
+      };
+      const tenantId = (await getOrgTenant(orgName)) ?? argv.tenant;
+      const authenticator = createAuthenticator(argv.authentication, tenantId);
 
-  // removing prompts untill further notice
-  // configurePrompts(server);
+      // removing prompts untill further notice
+      // configurePrompts(server);
 
-  configureAllTools(server, authenticator, getAzureDevOpsClient(authenticator, userAgentComposer), () => userAgentComposer.userAgent, enabledDomains);
+      configureAllTools(server, authenticator, getAzureDevOpsClient(authenticator, userAgentComposer), () => userAgentComposer.userAgent, enabledDomains);
+    });
+  } else {
+    // Use stdio transport for direct CLI usage
+    const server = new McpServer({
+      name: "Azure DevOps MCP Server",
+      version: packageVersion,
+      icons: [
+        {
+          src: "https://cdn.vsassets.io/content/icons/favicon.ico",
+        },
+      ],
+    });
 
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+    const userAgentComposer = new UserAgentComposer(packageVersion);
+    server.server.oninitialized = () => {
+      userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
+    };
+    const tenantId = (await getOrgTenant(orgName)) ?? argv.tenant;
+    const authenticator = createAuthenticator(argv.authentication, tenantId);
+
+    // removing prompts untill further notice
+    // configurePrompts(server);
+
+    configureAllTools(server, authenticator, getAzureDevOpsClient(authenticator, userAgentComposer), () => userAgentComposer.userAgent, enabledDomains);
+
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+  }
 }
 
 main().catch((error) => {
