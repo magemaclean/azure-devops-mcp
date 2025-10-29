@@ -1,5 +1,4 @@
 runtime: typescript
 transport: streamable-http
 args:
-  - --org
   - jestaisinc
