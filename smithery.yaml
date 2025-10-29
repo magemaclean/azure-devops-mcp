@@ -1,10 +1,6 @@
 runtime: typescript
 transport: streamable-http
 entry: src/smithery.ts
-
-# Configuration for the server
-config:
-  organization: jestaisinc
-  authentication: pat
-  domains:
-    - all
+env:
+  AZURE_DEVOPS_ORG: jestaisinc
+  AZURE_DEVOPS_AUTH: pat

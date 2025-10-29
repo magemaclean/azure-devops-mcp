@@ -2,14 +2,12 @@
 // Licensed under the MIT License.
 
 /**
- * Smithery-specific entry point using Smithery SDK's createStatelessServer
- * Azure DevOps MCP is stateless - each request is independent
+ * Smithery entry point - simple server factory
+ * Smithery's build system handles the HTTP transport wrapper
  */
 
-import { createStatelessServer, type CreateStatelessServerArg } from "@smithery/sdk/server/stateless.js";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as azdev from "azure-devops-node-api";
-import { z } from "zod";
 
 import { createAuthenticator } from "./auth.js";
 import { configureAllTools } from "./tools.js";
@@ -17,17 +15,14 @@ import { UserAgentComposer } from "./useragent.js";
 import { packageVersion } from "./version.js";
 import { DomainsManager } from "./shared/domains.js";
 
-// Configuration schema for Smithery
-const ConfigSchema = z.object({
-  organization: z.string().describe("Azure DevOps organization name"),
-  authentication: z.enum(["pat", "interactive", "azcli", "env"]).describe("Authentication method"),
-  domains: z.array(z.string()).describe("Domains to enable"),
-});
+// Read config from environment variables (set in smithery.yaml)
+const orgName = process.env.AZURE_DEVOPS_ORG || "jestaisinc";
+const authType = process.env.AZURE_DEVOPS_AUTH || "pat";
+const orgUrl = `https://dev.azure.com/${orgName}`;
 
-type Config = z.infer<typeof ConfigSchema>;
+console.error(`[Smithery] Initializing Azure DevOps MCP for org: ${orgName}`);
 
 function getAzureDevOpsClient(
-  orgUrl: string,
   getAzureDevOpsToken: () => Promise<string>,
   userAgentComposer: UserAgentComposer
 ): () => Promise<azdev.WebApi> {
@@ -43,65 +38,42 @@ function getAzureDevOpsClient(
   };
 }
 
-// Server factory function - called for each request (stateless)
-function createMcpServer({ config, logger }: CreateStatelessServerArg<Config>): Server {
-  logger.info(`Creating MCP server instance`);
-  logger.info(`Organization: ${config.organization}, Auth: ${config.authentication}`);
-
-  const orgUrl = `https://dev.azure.com/${config.organization}`;
-  
-  const server = new Server(
+// Create the MCP server
+const server = new McpServer({
+  name: "Azure DevOps MCP Server",
+  version: packageVersion,
+  icons: [
     {
-      name: "Azure DevOps MCP Server",
-      version: packageVersion,
+      src: "https://cdn.vsassets.io/content/icons/favicon.ico",
     },
-    {
-      capabilities: {
-        tools: {},
-      },
-    }
-  );
-
-  const userAgentComposer = new UserAgentComposer(packageVersion);
-  server.oninitialized = () => {
-    logger.info("Server initialized by client");
-    userAgentComposer.appendMcpClientInfo(server.getClientVersion());
-  };
-
-  // Create authenticator (no tenant lookup for PAT)
-  const authenticator = createAuthenticator(config.authentication, undefined);
-
-  // Get enabled domains
-  const domainsManager = new DomainsManager(config.domains);
-  const enabledDomains = domainsManager.getEnabledDomains();
-
-  // Configure tools using the MCP SDK Server (not McpServer wrapper)
-  const serverWrapper = { server } as any; // Wrap for compatibility with existing tool configuration
-  configureAllTools(
-    serverWrapper,
-    authenticator,
-    getAzureDevOpsClient(orgUrl, authenticator, userAgentComposer),
-    () => userAgentComposer.userAgent,
-    enabledDomains,
-    config.organization
-  );
-
-  logger.info(`Server configured with domains: ${Array.from(enabledDomains).join(", ")}`);
-  
-  return server;
-}
-
-// Create and start the Express app from Smithery SDK's stateless server
-const { app } = createStatelessServer(createMcpServer, {
-  schema: ConfigSchema,
-  logLevel: "info",
+  ],
 });
 
-// Start the server listening on PORT (required for Smithery deployment)
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.error(`[Smithery] Server listening on port ${PORT}`);
-});
+const userAgentComposer = new UserAgentComposer(packageVersion);
+server.server.oninitialized = () => {
+  console.error("[Smithery] Server initialized by client");
+  userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
+};
 
-export default app;
+// Create authenticator (PAT - no tenant lookup)
+const authenticator = createAuthenticator(authType, undefined);
+
+// Enable all domains
+const domainsManager = new DomainsManager(["all"]);
+const enabledDomains = domainsManager.getEnabledDomains();
+
+// Configure tools
+configureAllTools(
+  server,
+  authenticator,
+  getAzureDevOpsClient(authenticator, userAgentComposer),
+  () => userAgentComposer.userAgent,
+  enabledDomains,
+  orgName
+);
+
+console.error(`[Smithery] Server configured with domains: ${Array.from(enabledDomains).join(", ")}`);
+
+// Export the underlying Server instance for Smithery's HTTP wrapper
+export default server.server;
 
