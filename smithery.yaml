@@ -1,6 +1,4 @@
 runtime: typescript
 transport: streamable-http
-args:
-  - jestaisinc
-  - --authentication
-  - pat
+# Smithery-specific entry point (simpler, no CLI args)
+entry: src/smithery.ts
