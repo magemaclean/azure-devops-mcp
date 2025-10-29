@@ -77,6 +77,10 @@ function getAzureDevOpsClient(getAzureDevOpsToken: () => Promise<string>, userAg
 }
 
 async function main() {
+  console.error("[MCP] Starting Azure DevOps MCP Server...");
+  console.error(`[MCP] Organization: ${orgName}`);
+  console.error(`[MCP] Authentication: ${argv.authentication}`);
+  
   const server = new McpServer({
     name: "Azure DevOps MCP Server",
     version: packageVersion,
@@ -86,9 +90,11 @@ async function main() {
       },
     ],
   });
+  console.error("[MCP] McpServer created");
 
   const userAgentComposer = new UserAgentComposer(packageVersion);
   server.server.oninitialized = () => {
+    console.error("[MCP] Server initialized by client");
     userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
   };
   
@@ -96,23 +102,33 @@ async function main() {
   // For other auth types, tenant lookup happens lazily on first tool use
   let tenantId: string | undefined = argv.tenant;
   if (argv.authentication !== "pat") {
+    console.error("[MCP] Looking up tenant ID...");
     try {
       tenantId = (await getOrgTenant(orgName)) ?? argv.tenant;
+      console.error(`[MCP] Tenant ID: ${tenantId || 'none'}`);
     } catch (error) {
       // If tenant lookup fails, continue without it - tools will attempt auth without tenant
-      console.warn("Warning: Could not lookup organization tenant ID:", error);
+      console.error("[MCP] Warning: Could not lookup organization tenant ID:", error);
     }
+  } else {
+    console.error("[MCP] Skipping tenant lookup for PAT authentication");
   }
   
+  console.error("[MCP] Creating authenticator...");
   const authenticator = createAuthenticator(argv.authentication, tenantId);
+  console.error("[MCP] Authenticator created");
 
   // removing prompts untill further notice
   // configurePrompts(server);
 
+  console.error("[MCP] Configuring tools...");
   configureAllTools(server, authenticator, getAzureDevOpsClient(authenticator, userAgentComposer), () => userAgentComposer.userAgent, enabledDomains);
+  console.error(`[MCP] Tools configured for domains: ${Array.from(enabledDomains).join(', ')}`);
 
+  console.error("[MCP] Connecting transport...");
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  console.error("[MCP] Transport connected - server ready");
 }
 
 main().catch((error) => {
