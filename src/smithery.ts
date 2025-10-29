@@ -91,10 +91,16 @@ function createMcpServer({ config, logger }: CreateStatelessServerArg<Config>): 
   return server;
 }
 
-// Export the Express app from Smithery SDK's stateless server
+// Create and start the Express app from Smithery SDK's stateless server
 const { app } = createStatelessServer(createMcpServer, {
   schema: ConfigSchema,
   logLevel: "info",
+});
+
+// Start the server listening on PORT (required for Smithery deployment)
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.error(`[Smithery] Server listening on port ${PORT}`);
 });
 
 export default app;
