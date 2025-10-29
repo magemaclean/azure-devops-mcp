@@ -23,47 +23,43 @@ function isGitHubCodespaceEnv(): boolean {
 
 const defaultAuthenticationType = isGitHubCodespaceEnv() ? "azcli" : "interactive";
 
-// Parse command line arguments using yargs
-const argv = yargs(hideBin(process.argv))
-  .scriptName("mcp-server-azuredevops")
-  .usage("Usage: $0 <organization> [options]")
-  .version(packageVersion)
-  .command("$0 <organization> [options]", "Azure DevOps MCP Server", (yargs) => {
-    yargs.positional("organization", {
-      describe: "Azure DevOps organization name",
+// Parse command line arguments - returns parsed args
+function parseArguments() {
+  return yargs(hideBin(process.argv))
+    .scriptName("mcp-server-azuredevops")
+    .usage("Usage: $0 <organization> [options]")
+    .version(packageVersion)
+    .command("$0 <organization> [options]", "Azure DevOps MCP Server", (yargs) => {
+      yargs.positional("organization", {
+        describe: "Azure DevOps organization name",
+        type: "string",
+        demandOption: true,
+      });
+    })
+    .option("domains", {
+      alias: "d",
+      describe: "Domain(s) to enable: 'all' for everything, or specific domains like 'repositories builds work'. Defaults to 'all'.",
       type: "string",
-      demandOption: true,
-    });
-  })
-  .option("domains", {
-    alias: "d",
-    describe: "Domain(s) to enable: 'all' for everything, or specific domains like 'repositories builds work'. Defaults to 'all'.",
-    type: "string",
-    array: true,
-    default: "all",
-  })
-  .option("authentication", {
-    alias: "a",
-    describe: "Type of authentication to use. Supported values are 'interactive', 'azcli', 'env', and 'pat' (default: 'interactive')",
-    type: "string",
-    choices: ["interactive", "azcli", "env", "pat"],
-    default: defaultAuthenticationType,
-  })
-  .option("tenant", {
-    alias: "t",
-    describe: "Azure tenant ID (optional, applied when using 'interactive' and 'azcli' type of authentication)",
-    type: "string",
-  })
-  .help()
-  .parseSync();
+      array: true,
+      default: "all",
+    })
+    .option("authentication", {
+      alias: "a",
+      describe: "Type of authentication to use. Supported values are 'interactive', 'azcli', 'env', and 'pat' (default: 'interactive')",
+      type: "string",
+      choices: ["interactive", "azcli", "env", "pat"],
+      default: defaultAuthenticationType,
+    })
+    .option("tenant", {
+      alias: "t",
+      describe: "Azure tenant ID (optional, applied when using 'interactive' and 'azcli' type of authentication)",
+      type: "string",
+    })
+    .help()
+    .parseSync();
+}
 
-export const orgName = argv.organization as string;
-const orgUrl = "https://dev.azure.com/" + orgName;
-
-const domainsManager = new DomainsManager(argv.domains);
-export const enabledDomains = domainsManager.getEnabledDomains();
-
-function getAzureDevOpsClient(getAzureDevOpsToken: () => Promise<string>, userAgentComposer: UserAgentComposer): () => Promise<azdev.WebApi> {
+function getAzureDevOpsClient(orgUrl: string, getAzureDevOpsToken: () => Promise<string>, userAgentComposer: UserAgentComposer): () => Promise<azdev.WebApi> {
   return async () => {
     const accessToken = await getAzureDevOpsToken();
     const authHandler = azdev.getBearerHandler(accessToken);
@@ -78,8 +74,18 @@ function getAzureDevOpsClient(getAzureDevOpsToken: () => Promise<string>, userAg
 
 async function main() {
   console.error("[MCP] Starting Azure DevOps MCP Server...");
+  
+  // Parse arguments inside main() so they're available when server actually starts
+  const argv = parseArguments();
+  const orgName = argv.organization as string;
+  const orgUrl = "https://dev.azure.com/" + orgName;
+  
   console.error(`[MCP] Organization: ${orgName}`);
   console.error(`[MCP] Authentication: ${argv.authentication}`);
+  
+  // Get enabled domains
+  const domainsManager = new DomainsManager(argv.domains);
+  const enabledDomains = domainsManager.getEnabledDomains();
   
   const server = new McpServer({
     name: "Azure DevOps MCP Server",
@@ -122,7 +128,7 @@ async function main() {
   // configurePrompts(server);
 
   console.error("[MCP] Configuring tools...");
-  configureAllTools(server, authenticator, getAzureDevOpsClient(authenticator, userAgentComposer), () => userAgentComposer.userAgent, enabledDomains);
+  configureAllTools(server, authenticator, getAzureDevOpsClient(orgUrl, authenticator, userAgentComposer), () => userAgentComposer.userAgent, enabledDomains);
   console.error(`[MCP] Tools configured for domains: ${Array.from(enabledDomains).join(', ')}`);
 
   console.error("[MCP] Connecting transport...");
