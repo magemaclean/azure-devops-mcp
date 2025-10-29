@@ -92,9 +92,11 @@ function createMcpServer({ sessionId, config, logger }: CreateServerArg<Config>)
   return server;
 }
 
-// Export the stateful server using Smithery SDK
-export default createStatefulServer(createMcpServer, {
+// Export the Express app from Smithery SDK's stateful server
+const { app } = createStatefulServer(createMcpServer, {
   schema: ConfigSchema,
   logLevel: "info",
 });
+
+export default app;
 
