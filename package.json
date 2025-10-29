@@ -11,6 +11,7 @@
     "url": "https://github.com/microsoft/azure-devops-mcp.git"
   },
   "type": "module",
+  "module": "./src/index.ts",
   "bin": {
     "mcp-server-azuredevops": "dist/index.js"
   },
