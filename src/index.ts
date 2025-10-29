@@ -73,7 +73,7 @@ function getAzureDevOpsClient(orgUrl: string, getAzureDevOpsToken: () => Promise
   };
 }
 
-async function main() {
+export async function main() {
   console.error("[MCP] Starting Azure DevOps MCP Server...");
   
   // Parse arguments inside main() so they're available when server actually starts
@@ -135,7 +135,7 @@ async function main() {
   // Smithery's streamable-http transport expects the server WITHOUT transport connected
   // For local/stdio usage, we connect StdioServerTransport
   const connectTransport = process.env.NODE_ENV !== 'smithery' && !process.env.SMITHERY_MODE;
-  
+
   if (connectTransport) {
     console.error("[MCP] Connecting stdio transport for local usage...");
     const transport = new StdioServerTransport();
@@ -145,7 +145,8 @@ async function main() {
     console.error("[MCP] Server ready (transport will be connected by Smithery wrapper)");
   }
   
-  return server;
+  // Return the raw Server instance for Smithery's HTTP wrapper
+  return server.server;
 }
 
 // Export for Smithery's streamable-http transport

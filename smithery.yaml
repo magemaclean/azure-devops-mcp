@@ -1,6 +1,9 @@
 runtime: typescript
 transport: streamable-http
-entry: src/smithery.ts
+entry: src/index.ts
+args:
+  - jestaisinc
+  - --authentication
+  - pat
 env:
-  AZURE_DEVOPS_ORG: jestaisinc
-  AZURE_DEVOPS_AUTH: pat
+  SMITHERY_MODE: "true"
