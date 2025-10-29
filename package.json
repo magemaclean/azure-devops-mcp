@@ -13,7 +13,7 @@
   "type": "module",
   "module": "./src/index.ts",
   "bin": {
-    "mcp-server-azuredevops": "dist/index.js"
+    "mcp-server-azuredevops": "dist/cli.js"
   },
   "files": [
     "dist"
