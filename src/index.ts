@@ -147,16 +147,20 @@ async function main() {
   return server;
 }
 
-// Auto-run main() for local/stdio usage
-// Smithery will import and call main() itself  
-// In ES modules, check if this file is being run directly
-const isDirectRun = process.argv[1] && (process.argv[1].endsWith('/index.js') || process.argv[1].endsWith('\\index.js'));
-if (isDirectRun) {
-  main().catch((error) => {
-    console.error("Fatal error in main():", error);
-    process.exit(1);
-  });
-}
-
 // Export default for Smithery's streamable-http transport
+// Smithery will call this function when ready
 export default main;
+
+// Only auto-run if explicitly invoked via node (not imported by Smithery's build)
+if (import.meta.url.startsWith('file:')) {
+  const modulePath = new URL(import.meta.url).pathname;
+  const scriptPath = process.argv[1];
+  
+  // Check if this file is being executed directly (not imported)
+  if (scriptPath && (modulePath.endsWith(scriptPath) || scriptPath.endsWith('index.js'))) {
+    main().catch((error) => {
+      console.error("Fatal error in main():", error);
+      process.exit(1);
+    });
+  }
+}
