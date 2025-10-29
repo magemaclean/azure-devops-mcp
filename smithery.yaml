@@ -1,0 +1,44 @@
+name: azure-devops-mcp
+description: MCP server for interacting with Azure DevOps
+version: 2.2.1
+
+# Build configuration
+build:
+  # Install dependencies and build
+  command: npm install && npm run build
+  
+  # Validate the build output exists
+  output:
+    - dist/index.js
+
+# Server configuration
+server:
+  # The entry point for the MCP server
+  command: node
+  args:
+    - dist/index.js
+    - "${ADO_ORG}"
+  
+  # Environment variables that can be configured
+  env:
+    ADO_ORG:
+      description: "Azure DevOps organization name (e.g. 'contoso')"
+      required: true
+
+# Files to include in the deployment
+include:
+  - dist/**
+  - package.json
+  - package-lock.json
+  - README.md
+  - LICENSE.md
+
+# Files to exclude from deployment
+exclude:
+  - src/**
+  - test/**
+  - node_modules/**
+  - "*.ts"
+  - tsconfig.json
+  - .git/**
+
